@@ -1,1 +1,1 @@
-# REVIVE
+Read individual README.md files for frontend and backend.
