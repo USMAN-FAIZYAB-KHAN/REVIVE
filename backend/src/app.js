@@ -12,8 +12,8 @@ app.use(
     origin: [
       "*",
       "http://localhost:3000",
-      "http://localhost:8081",
-      
+      "http://192.168.1.13:3000",
+      "http://localhost:8081"
     ],
     // credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],

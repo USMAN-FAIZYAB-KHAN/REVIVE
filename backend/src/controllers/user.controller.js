@@ -14,6 +14,8 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 export const userRegistration = asyncHandler(async (req, res) => {
   const {authType, email, fullName, role, password, confirmPassword } = req.body;
 
+  
+
   if (![email, fullName, password, confirmPassword].every(Boolean)) {
     throw new ApiError(400, "All fields are required");
   }
