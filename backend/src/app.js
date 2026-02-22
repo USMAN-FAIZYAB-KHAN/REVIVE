@@ -10,10 +10,12 @@ const app = express()
 app.use(
   cors({
     origin: [
-      "http://localhost:5173",
-      "https://time-bound-digital-access-vault-nine.vercel.app",
+      "*",
+      "http://localhost:3000",
+      "http://192.168.1.13:3000",
+      "http://localhost:8081"
     ],
-    credentials: true,
+    // credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -29,7 +31,9 @@ app.use(cookieParser());
 
 
 //Routes
+import userRoutes from "./routes/user.routes.js"
 
+app.use("/api/users", userRoutes)
 
 
 

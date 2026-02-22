@@ -12,26 +12,30 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 
 export const userRegistration = asyncHandler(async (req, res) => {
-  const { email, firstName, lastName, password, password2 } = req.body;
+  const {authType, email, fullName, role, password, confirmPassword } = req.body;
 
-  if (![email, firstName, lastName, password, password2].every(Boolean)) {
+  
+
+  if (![email, fullName, password, confirmPassword].every(Boolean)) {
     throw new ApiError(400, "All fields are required");
   }
 
   const normalizedEmail = email.trim();
 
   const existingUser = await User.findOne({ email: normalizedEmail });
+  console.log(existingUser);
   if (existingUser) {
-    throw new ApiError(400, "User with this email already exists");
+    return res.json(new ApiResponse(409, null, "Email already in use"));
   }
 
-  if (password !== password2) {
-    throw new ApiError(400, "Passwords do not match");
+  if (password !== confirmPassword) {
+    return res.json(new ApiResponse(400, null, "Passwords do not match"));
   }
 
   const user = await User.create({
     email: normalizedEmail,
-    fullName: `${firstName.trim()} ${lastName.trim()}`,
+    fullName: fullName.trim(),
+    userType: role.toLowerCase().trim(),
     password,
     authProviders: ["local"],
     isEmailVerified: false,
@@ -48,7 +52,7 @@ export const userRegistration = asyncHandler(async (req, res) => {
 
 
 export const googleAuth = asyncHandler(async (req, res) => {
-  const { idToken } = req.body;
+  const { idToken, role } = req.body;
 
   if (!idToken) {
     throw new ApiError(400, "Google token is required");
@@ -83,6 +87,7 @@ export const googleAuth = asyncHandler(async (req, res) => {
     user = await User.create({
       email: normalizedEmail,
       fullName: name,
+      userType: role.toLowerCase().trim(),
       googleId,
       authProviders: ["google"],
       isEmailVerified: true,
@@ -124,9 +129,10 @@ export const googleAuth = asyncHandler(async (req, res) => {
 
 export const login = asyncHandler(async (req, res) => {
     const { email, password, authType, idToken } = req.body;
+    console.log(req.body);
 
     if (!authType) {
-        throw new ApiError(400, "Auth type is required");
+        return res.json(new ApiResponse(400, null, "Authentication type is required"));
     }
 
     let user;
@@ -134,36 +140,36 @@ export const login = asyncHandler(async (req, res) => {
     // =========================
     // LOCAL LOGIN
     // =========================
-    if (authType === "local") {
-        if ([email, password].some((f) => !f || f.trim() === "")) {
-            throw new ApiError(400, "Email and password required");
-        }
-
-        user = await User.findOne({ email });
-
-        if (!user) {
-            throw new ApiError(404, "User not found");
-        }
-
-        if (user.authType === "google") {
-            throw new ApiError(
-                400,
-                "This account was created using Google. Please login with Google."
-            );
-        }
-
-        const isValid = await user.comparePassword(password);
-        if (!isValid) {
-            throw new ApiError(401, "Invalid credentials");
-        }
+    if (authType === "local" || authType === "manual") {
+      if ([email, password].some((f) => !f || f.trim() === "")) {
+        return res.json(new ApiResponse(400, null, "Email and password are required"));
+      }
+      
+      user = await User.findOne({ email });
+      
+      if (!user) {
+        
+        return res.json(new ApiResponse(404, null, "User not found"));
+      }
+      
+      if (user.authType === "google") {
+        return res.json(new ApiResponse(400, null, "Please login using Google authentication"));
+      }
+      
+      const isValid = await user.comparePassword(password);
+      console.log("Password valid:", isValid);
+      if (!isValid) {
+        return res.json(new ApiResponse(401, null, "Invalid credentials"));
+      }
+      console.log("Auth Type:", authType);
     }
-
+    
     // =========================
     // GOOGLE LOGIN
     // =========================
     if (authType === "google") {
         if (!idToken) {
-            throw new ApiError(400, "Google token required");
+            return res.json(new ApiResponse(400, null, "Google ID token is required"));
         }
 
         const ticket = await client.verifyIdToken({
@@ -198,6 +204,8 @@ export const login = asyncHandler(async (req, res) => {
 
     user.refreshToken = refreshToken;
     await user.save();
+
+    
 
     return res
         .status(200)
